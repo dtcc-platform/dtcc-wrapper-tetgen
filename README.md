@@ -1,3 +1,5 @@
+#TODO: Add credits and copyright/license
+
 dtcc-wrapper-tetgen
 ===================
 
