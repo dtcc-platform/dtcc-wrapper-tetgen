@@ -1,0 +1,3 @@
+import dtcc_wrapper_tetgen
+
+print(dtcc_wrapper_tetgen.__all__)

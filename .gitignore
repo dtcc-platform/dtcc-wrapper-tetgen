@@ -209,3 +209,9 @@ __marimo__/
 
 *.vtu
 *.vtk
+
+*.tar.gz
+*.tar
+*.zip
+
+tetgen/

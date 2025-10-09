@@ -1,0 +1,10 @@
+include README.md
+include pyproject.toml
+
+recursive-include src/dtcc_wrapper_tetgen *.py
+recursive-include src/dtcc_wrapper_tetgen/cpp/tetwrap CMakeLists.txt *.cpp
+recursive-include src/dtcc_wrapper_tetgen/cpp/tetgen *.cxx *.h *.md LICENSE README makefile 
+
+prune src/dtcc_wrapper_tetgen/__pycache__
+prune src/dtcc_wrapper_tetgen/cpp/tetwrap/__pycache__
+prune src/dtcc_wrapper_tetgen/cpp/tetwrap/build

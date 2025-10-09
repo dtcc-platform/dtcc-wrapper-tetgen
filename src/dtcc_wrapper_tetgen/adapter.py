@@ -11,10 +11,9 @@ from typing import Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 import numpy as np
 
 # Local binding + helpers (no dtcc here)
-# from tetwrap import switches as tet_switches  # type: ignore
-# from tetwrap._tetwrap import tetrahedralize  # type: ignore
-import tetwrap
-from tetwrap import TetwrapIO as _TetwrapIO
+from . import _tetwrap
+from . import switches
+from ._tetwrap import TetwrapIO
 
 BoundaryFacets = Union[
     Sequence[Sequence[int]],                 # list of polygons (each polygon = list of vertex indices)
@@ -112,10 +111,10 @@ def tetrahedralize(
     if return_neighbors or return_boundary_faces:
         s_params["output_neighbors"] = True  # -n
     s_over = switches_overrides or {}
-    switch_str = tetwrap.switches.build_tetgen_switches(params=s_params, **s_over)
+    switch_str = switches.build_tetgen_switches(params=s_params, **s_over)
 
     # Call the C++ extension (rich result)
-    io: _TetwrapIO = tetwrap.tetrahedralize(V, F, B, switch_str, return_boundary_faces)
+    io: TetwrapIO = _tetwrap._tetrahedralize(V, F, B, switch_str, return_boundary_faces)
     
 
     if return_io: 
@@ -132,4 +131,5 @@ def tetrahedralize(
 
 __all__ = [
     "tetrahedralize",
+    "TetwrapIO",
 ]

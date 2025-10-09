@@ -49,10 +49,13 @@ endif()
 pybind11_add_module(_tetwrap tetwrap.cpp)
 target_link_libraries(_tetwrap PRIVATE tet)
 
+get_filename_component(_TETWRAP_BUILD_PARENT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+get_filename_component(_TETWRAP_BUILD_PARENT "${_TETWRAP_BUILD_PARENT}/.." ABSOLUTE)
+
 set_target_properties(_tetwrap PROPERTIES
-  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-  ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LIBRARY_OUTPUT_DIRECTORY "${_TETWRAP_BUILD_PARENT}"
+  RUNTIME_OUTPUT_DIRECTORY "${_TETWRAP_BUILD_PARENT}"
+  ARCHIVE_OUTPUT_DIRECTORY "${_TETWRAP_BUILD_PARENT}"
 )
 
 if(MSVC)
@@ -62,4 +65,3 @@ else()
   target_compile_options(tet PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(_tetwrap PRIVATE -Wall -Wextra -Wpedantic)
 endif()
-
