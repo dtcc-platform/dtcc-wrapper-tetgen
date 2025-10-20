@@ -4,6 +4,9 @@
 
 #include <vector>
 #include <stdexcept>
+#include <algorithm>
+#include <array>
+#include <map>
 
 #include "tetgen.h"
 
@@ -59,6 +62,7 @@ struct TetwrapIO {
     py::object tri_faces;     // (F,3) int32 or None
     py::object tri_markers;   // (F,) int32 or None
     py::object boundary_tri_faces; // (BF,3) int32 or None
+    py::object boundary_tri_markers; // (BF,) int32 or None
     py::object edges;         // (E,2) int32 or None
     py::object edge_markers;  // (E,) int32 or None
     py::object neighbors;     // (K,4) int32 or None
@@ -157,6 +161,7 @@ static py::array_t<int> compute_boundary_face_tris(
 static TetwrapIO tetrahedralize_core(
     py::array_t<double, py::array::c_style | py::array::forcecast> vertices,
     py::array_t<int,    py::array::c_style | py::array::forcecast> mesh_facets,
+    py::object mesh_facet_markers_obj,
     const std::vector<std::vector<int>> &boundary_facets,
     py::object tetgen_switches,
     bool compute_boundary_faces = true  )
@@ -174,6 +179,16 @@ static TetwrapIO tetrahedralize_core(
     const int N = static_cast<int>(V.shape(0));
     const int M = static_cast<int>(F.shape(0));
     const int B = static_cast<int>(boundary_facets.size());
+    py::array_t<int, py::array::c_style | py::array::forcecast> mesh_facet_markers;
+    const int* mesh_facet_marker_ptr = nullptr;
+    if (!mesh_facet_markers_obj.is_none()) {
+        mesh_facet_markers = mesh_facet_markers_obj.cast<py::array_t<int, py::array::c_style | py::array::forcecast>>();
+        if (mesh_facet_markers.ndim() != 1)
+            throw std::runtime_error("mesh_facet_markers must be a 1D array");
+        if (mesh_facet_markers.shape(0) != M)
+            throw std::runtime_error("mesh_facet_markers length must match number of mesh facets");
+        mesh_facet_marker_ptr = mesh_facet_markers.data();
+    }
 
     if (N <= 0) throw std::runtime_error("vertices: N <= 0");
     if (M < 0)  throw std::runtime_error("mesh_facets: M < 0");
@@ -234,7 +249,12 @@ static TetwrapIO tetrahedralize_core(
         poly.vertexlist[0] = F(fi, 0);
         poly.vertexlist[1] = F(fi, 1);
         poly.vertexlist[2] = F(fi, 2);
-        in.facetmarkerlist[fi] = 0;
+        int marker_value = -1;
+        if (mesh_facet_marker_ptr) {
+            const int raw_marker = mesh_facet_marker_ptr[fi];
+            marker_value = (raw_marker < 0) ? -1 : (raw_marker + 1);
+        }
+        in.facetmarkerlist[fi] = marker_value;
     }
 
     // Boundary polygons (marker 1..B)
@@ -250,7 +270,7 @@ static TetwrapIO tetrahedralize_core(
         poly.numberofvertices = static_cast<int>(loop.size());
         poly.vertexlist = new int[poly.numberofvertices];
         for (int j = 0; j < poly.numberofvertices; ++j) poly.vertexlist[j] = loop[j];
-        in.facetmarkerlist[M + bi] = bi + 1;
+        in.facetmarkerlist[M + bi] =  - (bi + 2);
     }
 
     // Build switch buffer (NUL-terminated)
@@ -276,13 +296,16 @@ static TetwrapIO tetrahedralize_core(
     // Ensure neighbors are requested if boundary faces are needed
     if (compute_boundary_faces) {
         bool has_n = false;
+        bool has_f = false;
         for (char c : sw) {
-            if (c == 'n') { has_n = true; break; }
+            if (c == '\0') break;
+            if (c == 'n') has_n = true;
+            if (c == 'f') has_f = true;
         }
-        if (!has_n) {
-            // Insert "-n" into the switch buffer before the NUL terminator
+        if (!has_n || !has_f) {
             if (!sw.empty() && sw.back() == '\0') sw.pop_back();
-            sw.push_back('n');
+            if (!has_n) sw.push_back('n');
+            if (!has_f) sw.push_back('f');
             sw.push_back('\0');
         }
     }
@@ -311,6 +334,18 @@ static TetwrapIO tetrahedralize_core(
         res.tri_faces   = py::none();
         res.tri_markers = py::none();
     }
+    std::map<std::array<int, 3>, int> triface_marker_map;
+    if (out.numberoftrifaces > 0 && out.trifacelist && out.trifacemarkerlist) {
+        for (int i = 0; i < out.numberoftrifaces; ++i) {
+            std::array<int, 3> key = {
+                out.trifacelist[3 * i + 0],
+                out.trifacelist[3 * i + 1],
+                out.trifacelist[3 * i + 2]
+            };
+            std::sort(key.begin(), key.end());
+            triface_marker_map[key] = out.trifacemarkerlist[i];
+        }
+    }
 
     // Edges (-e)
     if (out.numberofedges > 0 && out.edgelist) {
@@ -331,12 +366,29 @@ static TetwrapIO tetrahedralize_core(
         res.neighbors = py::none();
 
     if (compute_boundary_faces && !res.neighbors.is_none()) {
-        res.boundary_tri_faces =
+        py::array_t<int> boundary_faces =
             compute_boundary_face_tris(
                 res.tets.cast<py::array_t<int>>(),
                 res.neighbors.cast<py::array_t<int>>());
+        res.boundary_tri_faces = boundary_faces;
+
+        if (!triface_marker_map.empty()) {
+            auto faces = boundary_faces.unchecked<2>();
+            py::array_t<int> boundary_markers({faces.shape(0)});
+            auto markers = boundary_markers.mutable_unchecked<1>();
+            for (ssize_t i = 0; i < faces.shape(0); ++i) {
+                std::array<int, 3> key = {faces(i, 0), faces(i, 1), faces(i, 2)};
+                std::sort(key.begin(), key.end());
+                auto it = triface_marker_map.find(key);
+                markers(i) = (it != triface_marker_map.end()) ? it->second : 0;
+            }
+            res.boundary_tri_markers = boundary_markers;
+        } else {
+            res.boundary_tri_markers = py::none();
+        }
     } else {
         res.boundary_tri_faces = py::none();
+        res.boundary_tri_markers = py::none();
     }
     // Point markers
     if (out.pointmarkerlist)
@@ -369,6 +421,7 @@ PYBIND11_MODULE(_tetwrap, m)
         .def_readonly("tri_faces", &TetwrapIO::tri_faces)
         .def_readonly("tri_markers", &TetwrapIO::tri_markers)
         .def_readonly("boundary_tri_faces", &TetwrapIO::boundary_tri_faces)
+        .def_readonly("boundary_tri_markers", &TetwrapIO::boundary_tri_markers)
         .def_readonly("edges", &TetwrapIO::edges)
         .def_readonly("edge_markers", &TetwrapIO::edge_markers)
         .def_readonly("neighbors", &TetwrapIO::neighbors)
@@ -384,7 +437,7 @@ PYBIND11_MODULE(_tetwrap, m)
              py::array_t<int,    py::array::c_style | py::array::forcecast> mesh_facets,
              const std::vector<std::vector<int>> &boundary_facets,
              py::object tetgen_switches) {
-                TetwrapIO io = tetrahedralize_core(vertices, mesh_facets, boundary_facets, tetgen_switches);
+                TetwrapIO io = tetrahedralize_core(vertices, mesh_facets, py::none(), boundary_facets, tetgen_switches);
                 return std::make_pair(io.points.cast<py::array_t<double>>(), io.tets.cast<py::array_t<int>>());
           },
           py::arg("vertices"),
@@ -400,9 +453,10 @@ PYBIND11_MODULE(_tetwrap, m)
           &tetrahedralize_core,
           py::arg("vertices"),
           py::arg("mesh_facets"),
+          py::arg("mesh_facet_markers") = py::none(),
           py::arg("boundary_facets"),
           py::arg("tetgen_switches"),
-          py::arg("compute_boundary_faces"),
+          py::arg("compute_boundary_faces") = true,
           R"pbdoc(
               Build a TetGen volume mesh and return a TetwrapIO object.
               Use TetGen switches to request faces (-f), edges (-e), neighbors (-n).
