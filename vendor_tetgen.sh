@@ -7,7 +7,7 @@ TETGEN_URL="https://codeberg.org/TetGen/TetGen/archive/${TETGEN_VERSION}.tar.gz"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}" && pwd)"
 
-TARGET_DIR="${REPO_ROOT}/src/dtcc_wrapper_tetgen/cpp/tetgen"
+TARGET_DIR="${REPO_ROOT}/dtcc_wrapper_tetgen/cpp/tetgen"
 
 mkdir -p "${TARGET_DIR}"
 tmp_tar="$(mktemp)"

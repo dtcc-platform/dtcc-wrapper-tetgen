@@ -31,12 +31,12 @@ Homepage = "https://example.com/dtcc-wrapper-tetgen"
 
 [tool.scikit-build]
 cmake.version = ">=3.18"
-cmake.source-dir = "src/dtcc_wrapper_tetgen/cpp/tetwrap"
-wheel.packages = ["src/dtcc_wrapper_tetgen"]
+cmake.source-dir = "dtcc_wrapper_tetgen/cpp/tetwrap"
+wheel.packages = ["dtcc_wrapper_tetgen"]
 sdist.include = [
     "README.md",
     "MANIFEST.in",
-    "src/dtcc_wrapper_tetgen",
+    "dtcc_wrapper_tetgen",
 ]
 
 [tool.scikit-build.cmake.define]

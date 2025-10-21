@@ -9,21 +9,19 @@ Lightweight wheels and sdists for the TetGen volume-meshing kernel plus a small 
 ## Repository layout
 
 ```
-src/dtcc_wrapper_tetgen/
+dtcc_wrapper_tetgen/
   adapter.py              # Python helper around the pybind11 module
   switches.py             # switch builder that mirrors TetGen CLI options
-  _tetwrap.*              # compiled extension (built during pip install)
+  tetwrapio.py            # Python-side wrapper for the pybind result
   cpp/
-    tetrap                # (build products when you configure locally)
     tetwrap/tetwrap.cpp   # pybind11 bindings
     tetgen/               # vendored TetGen sources (tetgen.cxx, predicates.cxx,…)
-scripts/
-  vendor_tetgen.sh        # convenience helper to refresh TetGen sources
+vendor_tetgen.sh          # convenience helper to refresh TetGen sources
 demos/
   demo.py                 # small example on a box PLC
 ```
 
-> **Note:** Wheels require the TetGen sources to be checked in. Populate `src/dtcc_wrapper_tetgen/cpp/tetgen` before building or installing.
+> **Note:** Wheels require the TetGen sources to be checked in. Populate `dtcc_wrapper_tetgen/cpp/tetgen` before building or installing.
 
 ## Prerequisites
 
@@ -43,7 +41,7 @@ bash vendor_tetgen.sh           # defaults to v1.5.0
 TETGEN_VERSION=v1.6.0 ./scripts/vendor_tetgen.sh
 ```
 
-The script syncs `src/dtcc_wrapper_tetgen/cpp/tetgen`. Commit the updated files so sdists and wheels contain the sources.
+The script syncs `dtcc_wrapper_tetgen/cpp/tetgen`. Commit the updated files so sdists and wheels contain the sources.
 
 ## Install
 
@@ -126,10 +124,9 @@ For basic `(points, tets)` output set `return_io=False`. Switch toggles are desc
 You can build the `_tetwrap` extension without `pip` for local debugging:
 
 ```bash
-cd src/dtcc_wrapper_tetgen/cpp/tetwrap
+cd dtcc_wrapper_tetgen/cpp/tetwrap
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
 
-The resulting `_tetwrap.*.so` is placed in `src/dtcc_wrapper_tetgen`, making `python -m demos.demo` usable with `PYTHONPATH=src`.
-
+The resulting `_tetwrap.*.so` is placed in `dtcc_wrapper_tetgen`, making `python -m demos.demo` usable with `PYTHONPATH=.`
