@@ -311,8 +311,14 @@ static TetwrapIO tetrahedralize_core(
     }
 
 
-    // Tetrahedralize
-    tetrahedralize(sw.data(), &in, &out);
+    // Tetrahedralize with exception handling
+    try {
+        tetrahedralize(sw.data(), &in, &out);
+    } catch (const std::exception& e) {
+        throw std::runtime_error(std::string("TetGen failed: ") + e.what());
+    } catch (...) {
+        throw std::runtime_error("TetGen failed with an unknown error. This may be due to invalid input geometry or incompatible switches.");
+    }
 
     // Populate result
     TetwrapIO res;

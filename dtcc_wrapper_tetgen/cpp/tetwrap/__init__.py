@@ -10,7 +10,6 @@ tetrahedralize = _tetrahedralize
 
 __all__ = [
     "build_volume_mesh",
-    "build_volume_mesh_ex",
     "TetwrapIO",
     "tetrahedralize",
     "switches",
