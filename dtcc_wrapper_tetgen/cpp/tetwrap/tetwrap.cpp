@@ -329,7 +329,7 @@ static TetwrapIO tetrahedralize_core(
     if (py::isinstance<py::str>(tetgen_switches)) res.switches = py::cast<std::string>(tetgen_switches);
     else res.switches = ""; // optional
 
-    // Faces (-f)
+    // Output Faces (-f)
     if (out.numberoftrifaces > 0 && out.trifacelist) {
         res.tri_faces = to_array_i32(out.trifacelist, out.numberoftrifaces, 3);
         if (out.trifacemarkerlist)
@@ -353,7 +353,7 @@ static TetwrapIO tetrahedralize_core(
         }
     }
 
-    // Edges (-e)
+    // Output Edges (-e)
     if (out.numberofedges > 0 && out.edgelist) {
         res.edges = to_array_i32(out.edgelist, out.numberofedges, 2);
         if (out.edgemarkerlist)
@@ -365,7 +365,7 @@ static TetwrapIO tetrahedralize_core(
         res.edge_markers = py::none();
     }
 
-    // Neighbors (-n)
+    // Output Neighbors (-n)
     if (out.neighborlist)
         res.neighbors = to_array_i32(out.neighborlist, out.numberoftetrahedra, 4);
     else

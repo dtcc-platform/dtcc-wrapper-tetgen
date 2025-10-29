@@ -51,7 +51,7 @@ Vendoring downloads TetGen to the package’s `_deps` directory. Run:
 
 ```bash
 cd dtcc-wrapper-tetgen
-bash vendor_tetgen.sh           # defaults to v1.5.0
+bash vendor_tetgen.sh           # defaults to v1.5.1
 # or choose another tag:
 TETGEN_VERSION=v1.6.0 ./scripts/vendor_tetgen.sh
 ```
