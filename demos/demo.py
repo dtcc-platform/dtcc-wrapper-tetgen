@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 import numpy as np
 
-from dtcc_wrapper_tetgen import tetrahedralize, TetwrapIO, switches
+from dtcc_tetgen_wrapper import tetrahedralize, TetwrapIO, switches
 
 
 def make_unit_box(bottom_size: float = 1.0, height: float = 1.0):

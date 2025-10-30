@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from dtcc_wrapper_tetgen import tetrahedralize, build_tetgen_switches
+from dtcc_tetgen_wrapper import tetrahedralize, build_tetgen_switches
 
 
 @pytest.mark.integration

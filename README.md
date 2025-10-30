@@ -1,6 +1,6 @@
 # dtcc-tetgen-wrapper
 
-[![CI](https://github.com/dtcc-platform/dtcc-wrapper-tetgen/actions/workflows/ci.yml/badge.svg)](https://github.com/dtcc-platform/dtcc-wrapper-tetgen/actions/workflows/ci.yml)
+[![CI](https://github.com/dtcc-platform/dtcc-tetgen-wrapper/actions/workflows/ci.yml/badge.svg)](https://github.com/dtcc-platform/dtcc-tetgen-wrapper/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
@@ -22,17 +22,17 @@ pip install dtcc-tetgen-wrapper
 
 ### 1.2 Manual Build and Install
 
-1. After cloning this repository, wheels require the TetGen sources to be checked in. Populate `dtcc_wrapper_tetgen/cpp/tetgen` before building or installing.
+1. After cloning this repository, wheels require the TetGen sources to be checked in. Populate `dtcc_tetgen_wrapper/cpp/tetgen` before building or installing.
 
 ```bash
-git clone https://github.com/dtcc-platform/dtcc-wrapper-tetgen.git
+git clone https://github.com/dtcc-platform/dtcc-tetgen-wrapper.git
 ```
 
-2. Vendoring downloads TetGen to the package’s `dtcc_wrapper_tetgen/cpp/` directory. Run:
+2. Vendoring downloads TetGen to the package’s `dtcc_tetgen_wrapper/cpp/` directory. Run:
 
 ```bash
 
-cd dtcc-wrapper-tetgen
+cd dtcc-tetgen-wrapper
 bash vendor_tetgen.sh           # defaults to v1.5.1
 # or choose another tag:
 TETGEN_VERSION=v1.6.0 ./vendor_tetgen.sh
@@ -53,7 +53,7 @@ The adapter targets manifold triangle surfaces (PLC input). You can either reque
 
 ```python
 import numpy as np
-from dtcc_wrapper_tetgen import switches, tetrahedralize, TetwrapIO
+from dtcc_tetgen_wrapper import switches, tetrahedralize, TetwrapIO
 
 vertices = np.array(
     [
@@ -175,7 +175,7 @@ def tetrahedralize(
 - **`switches.build_tetgen_switches(params, **overrides)`**: Compose TetGen command-line switches from descriptive Python parameters.
 
 ```python
-from dtcc_wrapper_tetgen import switches, tetrahedralize, TetwrapIO
+from dtcc_tetgen_wrapper import switches, tetrahedralize, TetwrapIO
 
 params = switches.tetgen_defaults()
 params.update({"quality": (1.8, 20), "max_volume": 10.0, "output_faces": True})
@@ -242,7 +242,7 @@ This wrapper is licensed under the GNU Affero General Public License v3.0 (AGPL-
 
 ## Links
 
-- [GitHub Repository](https://github.com/dtcc-platform/dtcc-wrapper-tetgen)
-- [Issue Tracker](https://github.com/dtcc-platform/dtcc-wrapper-tetgen/issues)
+- [GitHub Repository](https://github.com/dtcc-platform/dtcc-tetgen-wrapper)
+- [Issue Tracker](https://github.com/dtcc-platform/dtcc-tetgen-wrapper/issues)
 - [TetGen Manual](https://codeberg.org/TetGen/Manuals/src/branch/main/tetgen-manual-1.5.pdf)
 - [DTCC Platform](https://github.com/dtcc-platform)

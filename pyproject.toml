@@ -8,7 +8,7 @@ requires = [
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "dtcc-wrapper-tetgen"
+name = "dtcc-tetgen-wrapper"
 version = "0.1.0"
 description = "Pybind11-powered TetGen bindings with a lightweight Python adapter."
 readme = "README.md"
@@ -27,18 +27,18 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/dtcc-platform/dtcc-wrapper-tetgen"
-Repository = "https://github.com/dtcc-platform/dtcc-wrapper-tetgen"
-"Bug Tracker" = "https://github.com/dtcc-platform/dtcc-wrapper-tetgen/issues"
+Homepage = "https://github.com/dtcc-platform/dtcc-tetgen-wrapper"
+Repository = "https://github.com/dtcc-platform/dtcc-tetgen-wrapper"
+"Bug Tracker" = "https://github.com/dtcc-platform/dtcc-tetgen-wrapper/issues"
 
 [tool.scikit-build]
 cmake.version = ">=3.18"
-cmake.source-dir = "dtcc_wrapper_tetgen/cpp/tetwrap"
-wheel.packages = ["dtcc_wrapper_tetgen"]
+cmake.source-dir = "dtcc_tetgen_wrapper/cpp/tetwrap"
+wheel.packages = ["dtcc_tetgen_wrapper"]
 sdist.include = [
     "README.md",
     "MANIFEST.in",
-    "dtcc_wrapper_tetgen",
+    "dtcc_tetgen_wrapper",
 ]
 
 [tool.scikit-build.cmake.define]
@@ -56,22 +56,22 @@ strict_equality = true
 exclude = ["demos/", "tests/", "build/", "dist/"]
 
 [[tool.mypy.overrides]]
-module = "dtcc_wrapper_tetgen.cpp.tetwrap.*"
+module = "dtcc_tetgen_wrapper.cpp.tetwrap.*"
 ignore_missing_imports = true
 
 [tool.black]
 line-length = 120
 target-version = ["py39", "py310", "py311", "py312"]
-include = "\.pyi?$"
+include = '\\.pyi?$'
 
 [tool.isort]
 profile = "black"
 line_length = 120
 skip_gitignore = true
-known_first_party = ["dtcc_wrapper_tetgen"]
+known_first_party = ["dtcc_tetgen_wrapper"]
 
 [tool.coverage.run]
-source = ["dtcc_wrapper_tetgen"]
+source = ["dtcc_tetgen_wrapper"]
 omit = ["*/tests/*", "*/demos/*", "*/__init__.py"]
 
 [tool.coverage.report]

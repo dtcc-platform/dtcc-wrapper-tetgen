@@ -1,4 +1,4 @@
-"""Pytest configuration and fixtures for dtcc-wrapper-tetgen tests."""
+"""Pytest configuration and fixtures for dtcc-tetgen-wrapper tests."""
 
 import numpy as np
 import pytest
