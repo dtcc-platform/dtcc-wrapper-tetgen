@@ -1,8 +1,9 @@
-from copy import deepcopy
-
 """Build TetGen command-line switches from descriptive kwargs.
 This file intentionally has no dtcc dependency.
 """
+
+from copy import deepcopy
+from typing import Any, Dict, Optional, Union
 
 DEFAULT_TETGEN_PARAMS = {
     # Core
@@ -56,11 +57,24 @@ DEFAULT_TETGEN_PARAMS = {
 }
 
 
-def tetgen_defaults():
+def tetgen_defaults() -> Dict[str, Any]:
+    """Get a deep copy of the default TetGen parameters.
+
+    Returns:
+        A dictionary with default TetGen parameter values.
+    """
     return deepcopy(DEFAULT_TETGEN_PARAMS)
 
 
-def _fmt_num(x):
+def _fmt_num(x: Union[bool, int, float]) -> str:
+    """Format a number for inclusion in TetGen switches.
+
+    Args:
+        x: Value to format (bool, int, or float).
+
+    Returns:
+        Formatted string representation.
+    """
     if x is True:
         return ""
     if isinstance(x, float):
@@ -68,7 +82,15 @@ def _fmt_num(x):
     return str(x)
 
 
-def _emit_q(cfg) -> str:
+def _emit_q(cfg: Dict[str, Any]) -> str:
+    """Build the quality switch string for TetGen.
+
+    Args:
+        cfg: Configuration dictionary with quality parameters.
+
+    Returns:
+        Quality switch string (e.g., "q", "q1.5", "q2/15").
+    """
     ratio = cfg.get("radius_edge_ratio")
     angle = cfg.get("min_dihedral_angle")
     q = cfg.get("quality")
@@ -103,7 +125,19 @@ def _emit_q(cfg) -> str:
     return s
 
 
-def build_tetgen_switches(params=None, **overrides) -> str:
+def build_tetgen_switches(params: Optional[Dict[str, Any]] = None, **overrides: Any) -> str:
+    """Build TetGen command-line switches from parameters.
+
+    Args:
+        params: Optional dictionary of TetGen parameters.
+        **overrides: Keyword arguments to override params.
+
+    Returns:
+        String of concatenated TetGen switches.
+
+    Raises:
+        ValueError: If mutually exclusive options are specified.
+    """
     cfg = tetgen_defaults()
     if params:
         cfg.update(params)

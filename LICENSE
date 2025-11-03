@@ -1,0 +1,35 @@
+                    GNU AFFERO GENERAL PUBLIC LICENSE
+                       Version 3, 19 November 2007
+
+Copyright (C) 2024 DTCC Platform Contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+ADDITIONAL TERMS AND NOTICES:
+
+This software is a Python wrapper for TetGen, which is also licensed under
+the GNU Affero General Public License (AGPL). TetGen is developed and
+copyrighted by Hang Si at Weierstrass Institute for Applied Analysis and
+Stochastics (WIAS).
+
+TetGen Website: http://wias-berlin.de/software/tetgen/
+TetGen License: GNU Affero General Public License v3.0
+
+When using this software, you must comply with both the terms of this
+license and the TetGen license. The AGPL requires that if you use this
+software to provide a network service, you must provide the source code
+to users of that service.
+
+For the full text of the GNU Affero General Public License, please visit:
+https://www.gnu.org/licenses/agpl-3.0.html
