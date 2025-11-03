@@ -1,100 +1,96 @@
-# dtcc-wrapper-tetgen
+# dtcc-tetgen-wrapper
 
-Lightweight wheels and sdists for the TetGen volume-meshing kernel plus a small Python adapter. The package exposes
+[![CI](https://github.com/dtcc-platform/dtcc-tetgen-wrapper/actions/workflows/ci.yml/badge.svg)](https://github.com/dtcc-platform/dtcc-tetgen-wrapper/actions/workflows/ci.yml)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
-- `tetrahedralize(...)`: run TetGen on a watertight surface mesh and return volumetric elements or the richer `TetwrapIO`.
-- `switches.build_tetgen_switches(...)`: compose TetGen switch strings from descriptive keyword arguments.
-- `TetwrapIO`: container returned by `_tetwrap.tetrahedralize` with NumPy arrays for vertices, tetrahedra, faces, edges, etc.
+Lightweight Python wrapper for the TetGen tetrahedral mesh generator. This package provides Python bindings to TetGen's powerful 3D Delaunay tetrahedralization and mesh generation capabilities.
 
-## Repository layout
+## What is this?
 
-```
-dtcc_wrapper_tetgen/
-  adapter.py              # Python helper around the pybind11 module
-  switches.py             # switch builder that mirrors TetGen CLI options
-  tetwrapio.py            # Python-side wrapper for the pybind result
-  cpp/
-    tetwrap/tetwrap.cpp   # pybind11 bindings
-    tetgen/               # vendored TetGen sources (tetgen.cxx, predicates.cxx,…)
-vendor_tetgen.sh          # convenience helper to refresh TetGen sources
-demos/
-  demo.py                 # small example on a box PLC
-```
+`dtcc-tetgen-wrapper` ships the [TetGen](http://wias-berlin.de/software/tetgen/) 3D tetrahedralization engine as a self-contained Python extension. It exposes a concise, NumPy-friendly API that feeds surface meshes to TetGen and returns tetrahedral cells, boundary metadata, and adjacency information.
 
-> **Note:** Wheels require the TetGen sources to be checked in. Populate `dtcc_wrapper_tetgen/cpp/tetgen` before building or installing.
+**Key Point**: You get TetGen's command-line power with a single function call — no separate binaries or intermediate `.node` / `.ele` files.
 
-## Prerequisites
+## Quick Start
 
-- Python 3.9+
-- C++17 toolchain
-- CMake ≥ 3.18
-- `pip install scikit-build-core pybind11 numpy` if you plan to build locally
-
-## Vendor TetGen sources (must happen before `pip install .`)
-
-Vendoring downloads TetGen to the package’s `_deps` directory. Run:
+### 1.1 Install through PyPI
 
 ```bash
-cd dtcc-wrapper-tetgen
-bash vendor_tetgen.sh           # defaults to v1.5.0
-# or choose another tag:
-TETGEN_VERSION=v1.6.0 ./scripts/vendor_tetgen.sh
+pip install dtcc-tetgen-wrapper
 ```
 
-The script syncs `dtcc_wrapper_tetgen/cpp/tetgen`. Commit the updated files so sdists and wheels contain the sources.
+### 1.2 Manual Build and Install
 
-## Install
+1. After cloning this repository, wheels require the TetGen sources to be checked in. Populate `dtcc_tetgen_wrapper/cpp/tetgen` before building or installing.
+
+```bash
+git clone https://github.com/dtcc-platform/dtcc-tetgen-wrapper.git
+```
+
+2. Vendoring downloads TetGen to the package’s `dtcc_tetgen_wrapper/cpp/` directory. Run:
+
+```bash
+
+cd dtcc-tetgen-wrapper
+bash vendor_tetgen.sh           # defaults to v1.5.1
+# or choose another tag:
+TETGEN_VERSION=v1.6.0 ./vendor_tetgen.sh
+```
+
+3. Build and Install
 
 ```bash
 python -m venv .venv && source .venv/bin/activate  # optional
 pip install --upgrade pip
 pip install .                                      # builds _tetwrap inplace
-# Development mode:
-pip install -e .
 ```
 
-`pip install` automatically builds `_tetwrap` via `scikit-build-core` and CMake, placing the extension alongside the Python sources.
 
-## Generating a volume mesh
+### 2. Generate a mesh
 
 The adapter targets manifold triangle surfaces (PLC input). You can either request the rich `TetwrapIO` or just get points/tets:
 
 ```python
 import numpy as np
-from dtcc_wrapper_tetgen import switches, tetrahedralize, TetwrapIO
+from dtcc_tetgen_wrapper import switches, tetrahedralize, TetwrapIO
 
-# Cube vertices/faces (0-based indices defining a watertight surface).
-vertices = np.array([
-    [0.0, 0.0, 0.0],
-    [1.0, 0.0, 0.0],
-    [1.0, 1.0, 0.0],
-    [0.0, 1.0, 0.0],
-    [0.0, 0.0, 1.0],
-    [1.0, 0.0, 1.0],
-    [1.0, 1.0, 1.0],
-    [0.0, 1.0, 1.0],
-], dtype=float)
+vertices = np.array(
+    [
+        [0, 0, 0],
+        [1, 0, 0],
+        [1, 1, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+        [1, 0, 1],
+        [1, 1, 1],
+        [0, 1, 1],
+    ],
+    dtype=float,
+)
 
-faces = np.array([
-    [0, 1, 2], [0, 2, 3],  # bottom
-    [4, 5, 6], [4, 6, 7],  # top
-    [0, 1, 5], [0, 5, 4],  # south
-    [1, 2, 6], [1, 6, 5],  # east
-    [2, 3, 7], [2, 7, 6],  # north
-    [3, 0, 4], [3, 4, 7],  # west
-], dtype=int)
+faces = np.array(
+    [
+        [0, 1, 2], [0, 2, 3],
+        [4, 5, 6], [4, 6, 7],
+        [0, 1, 5], [0, 5, 4],
+        [1, 2, 6], [1, 6, 5],
+        [2, 3, 7], [2, 7, 6],
+        [3, 0, 4], [3, 4, 7],
+    ],
+    dtype=np.int64,
+)
 
-# Boundary facets: polygons describing each face loop.
 boundary_facets = {
-    "south": [0, 1, 5, 4],
-    "east": [1, 2, 6, 5],
-    "north": [2, 3, 7, 6],
-    "west": [3, 0, 4, 7],
-    "top": [4, 5, 6, 7],
     "bottom": [0, 1, 2, 3],
+    "top": [4, 5, 6, 7],
+    "south": [0, 1, 5, 4],
+    "north": [2, 3, 7, 6],
+    "east": [1, 2, 6, 5],
+    "west": [3, 0, 4, 7],
 }
 
-switch_str = switches.build_tetgen_switches(
+switches = switches.build_tetgen_switches(
     params={
         "plc": True,
         "quality": 1.6,         # triangle quality (radius-edge ratio)
@@ -104,29 +100,149 @@ switch_str = switches.build_tetgen_switches(
     }
 )
 
-mesh_io: TetwrapIO = tetrahedralize(
+mesh: TetwrapIO = tetrahedralize(
     vertices,
     faces,
     boundary_facets,
-    switches_overrides={"extra": switch_str},
+    switches_params= switches
     return_io=True,
 )
 
-points = mesh_io.points          # (N, 3)
-tets = mesh_io.tets              # (K, 4)
-boundary_triangles = mesh_io.tri_faces
+points = mesh.points                # (N, 3)
+tets = mesh.tets                    # (K, 4)
+boundary_triangles = mesh.tri_faces # (B, 3)
 ```
 
 For basic `(points, tets)` output set `return_io=False`. Switch toggles are described in `switches.py`.
 
-## Building the extension manually (optional)
+## Features
 
-You can build the `_tetwrap` extension without `pip` for local debugging:
+- ✅ **High-level mesh API**: Call `tetrahedralize()` with NumPy arrays to obtain tetrahedra, faces, edges, markers, and neighbor connectivity in one shot
+- ✅ **Switch builder**: Describe TetGen command-line switches with expressive Python keywords via `switches.build_tetgen_switches()`
+- ✅ **Marker normalization**: `TetwrapIO` converts TetGen's 1-based boundary markers into zero-based arrays for Python tooling
+- ✅ **Zero-copy arrays**: Access TetGen output buffers without redundant copies or conversions
+- ✅ **Quality & sizing controls**: Configure radius-edge ratios, dihedral angles, and per-region volume targets programmatically
+- ✅ **Vendored TetGen sources**: Wheels bundle vetted TetGen code; source builds pull it in automatically using `vendor_tetgen.sh`
 
-```bash
-cd dtcc_wrapper_tetgen/cpp/tetwrap
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
+## Use Cases
+
+- Python workflows that need robust tetrahedral meshes from watertight triangle surfaces
+- PDE and FEM solvers that combine Python front-ends with compiled numerical kernels
+- Geometry processing pipelines that favor TetGen over CGAL or Gmsh
+- Automated meshing backends for CAD, GIS, or simulation services
+
+## Documentation
+
+- [README.md](README.md) — in-depth build, troubleshooting, and development guide
+- [demos/demo.py](demos/demo.py) — end-to-end PLC meshing example
+- [tests/](tests/) — pytest suite illustrating inputs, outputs, and corner cases
+- [vendor_tetgen.sh](vendor_tetgen.sh) — helper script that syncs official TetGen sources for source builds
+
+## APIs
+
+### `tetrahedralize(vertices, faces, boundary_facets, …)`: 
+Run TetGen on a Piecewise Linear Complex (PLC) and return a `TetwrapIO` wrapper or raw arrays.
+
+```python
+def tetrahedralize(
+    V: np.ndarray,
+    F: Optional[np.ndarray] = None,
+    boundary_facets: Optional[Dict[str, List[List[int]]]] = None,
+    *,
+    return_io: bool = False,
+    return_faces: bool = False,
+    return_edges: bool = False,
+    return_neighbors: bool = False,
+    return_boundary: bool = False,
+    interior_default: int = -10,
+    tetgen_switches: Optional[str] = None,
+    **kwargs
+) -> Union[Tuple[np.ndarray, ...], TetwrapIO]
 ```
 
-The resulting `_tetwrap.*.so` is placed in `dtcc_wrapper_tetgen`, making `python -m demos.demo` usable with `PYTHONPATH=.`
+**Parameters:**
+- `V`: (N, 3) array of vertex coordinates
+- `F`: Optional (M, 3) or (M, 4) array of face indices
+- `boundary_facets`: Dictionary mapping boundary names to face lists
+- `return_io`: If True, return TetwrapIO object instead of tuple
+- `return_faces/edges/neighbors/boundary`: Control which outputs to include
+- `interior_default`: Marker value for interior (non-boundary) faces
+- `tetgen_switches`: Raw TetGen switch string (overrides kwargs)
+- `**kwargs`: TetGen parameters (quality, max_volume, etc.)
+
+
+- **`TetwrapIO`**: Lightweight accessor exposing `points`, `tets`, `tri_faces`, `boundary_tri_faces`, `neighbors`, `edges`, and marker normalization helpers.
+- **`switches.build_tetgen_switches(params, **overrides)`**: Compose TetGen command-line switches from descriptive Python parameters.
+
+```python
+from dtcc_tetgen_wrapper import switches, tetrahedralize, TetwrapIO
+
+params = switches.tetgen_defaults()
+params.update({"quality": (1.8, 20), "max_volume": 10.0, "output_faces": True})
+switch_str = switches.build_tetgen_switches(params=params, quiet=True)
+```
+
+## Requirements
+
+- **For installation**
+  - Python 3.9 or newer
+  - pip with wheel support
+  - NumPy (installed automatically as a dependency)
+- **For building from source**
+  - C++17 compiler toolchain
+  - CMake ≥ 3.18 and `scikit-build-core`
+  - `pybind11`, `numpy`, and `pytest` for local builds and tests
+  - Run `bash vendor_tetgen.sh` to fetch TetGen sources before `pip install .`
+
+
+## Troubleshooting
+
+### Common Issues
+
+**ImportError: No module named '_tetwrap'**
+- Ensure TetGen sources are vendored: `bash vendor_tetgen.sh`
+- Rebuild the package: `pip install --force-reinstall .`
+
+**Segmentation fault during tetrahedralization**
+- Check that input vertices form a valid 3D geometry (not coplanar)
+- Ensure faces define a closed, watertight surface
+- Verify face indices are within bounds
+
+**Poor mesh quality**
+- Adjust quality parameters: decrease `max_radius_edge_ratio`, increase `min_dihedral_angle`
+- Use smaller `max_volume` for finer meshes
+- Enable quality mode with `quality=True`
+
+**TetGen fails with invalid input**
+- Verify input is a valid Piecewise Linear Complex (PLC)
+- Check for self-intersecting faces
+- Ensure consistent face orientation (outward normals)
+
+## Performance Tips
+
+1. **Large meshes**: Use `quiet=True` to reduce console output overhead
+2. **Quality vs. Speed**: Balance quality constraints with mesh size requirements
+3. **Memory usage**: Return only needed components (avoid `return_io=True` if you only need points/tets)
+4. **Parallel processing**: TetGen itself is single-threaded; parallelize at the Python level for multiple meshes
+
+## Contributing
+
+Contributions welcome! Open an issue or pull request, run the test suite & code quality checks, and document how to reproduce your changes.
+
+## License
+
+This wrapper is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0), matching TetGen's license. See [LICENSE](LICENSE) for details.
+
+**Important**: TetGen itself is also AGPL-licensed. Any software using this wrapper must comply with AGPL terms, including providing source code for network services.
+
+## Acknowledgements
+
+- TetGen is developed by Hang Si and distributed under the AGPL license.
+- Part of the [DTCC Platform](https://github.com/dtcc-platform), which advances open tooling for digital twins of cities.
+
+## Links
+
+- [GitHub Repository](https://github.com/dtcc-platform/dtcc-tetgen-wrapper)
+- [Issue Tracker](https://github.com/dtcc-platform/dtcc-tetgen-wrapper/issues)
+- [TetGen Manual](https://codeberg.org/TetGen/Manuals/src/branch/main/tetgen-manual-1.5.pdf)
+- [DTCC Platform](https://github.com/dtcc-platform)

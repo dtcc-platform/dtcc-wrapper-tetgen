@@ -31,6 +31,16 @@ class TetwrapIO:
         object.__setattr__(self, "_normalized", True)
 
     def _normalize_marker_array(self, markers: Any) -> None:
+        """Normalize TetGen marker array from 1-based to 0-based indexing.
+
+        TetGen uses 1-based markers where 0 means "interior" (non-boundary).
+        This method converts to 0-based indexing for Python compatibility:
+        - Positive markers are decremented by 1
+        - Zero markers become interior_default (typically -1)
+
+        Args:
+            markers: Array of TetGen markers to normalize in-place.
+        """
         if markers is None:
             return
         arr = np.asarray(markers)

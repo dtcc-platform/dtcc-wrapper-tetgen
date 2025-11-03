@@ -1,5 +1,5 @@
 """
-Public package entry points for dtcc_wrapper_tetgen.
+Public package entry points for dtcc_tetgen_wrapper.
 """
 
 from . import switches

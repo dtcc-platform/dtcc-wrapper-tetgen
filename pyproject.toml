@@ -8,7 +8,7 @@ requires = [
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "dtcc-wrapper-tetgen"
+name = "dtcc-tetgen-wrapper"
 version = "0.1.0"
 description = "Pybind11-powered TetGen bindings with a lightweight Python adapter."
 readme = "README.md"
@@ -27,17 +27,59 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://example.com/dtcc-wrapper-tetgen"
+Homepage = "https://github.com/dtcc-platform/dtcc-tetgen-wrapper"
+Repository = "https://github.com/dtcc-platform/dtcc-tetgen-wrapper"
+"Bug Tracker" = "https://github.com/dtcc-platform/dtcc-tetgen-wrapper/issues"
 
 [tool.scikit-build]
 cmake.version = ">=3.18"
-cmake.source-dir = "dtcc_wrapper_tetgen/cpp/tetwrap"
-wheel.packages = ["dtcc_wrapper_tetgen"]
+cmake.source-dir = "dtcc_tetgen_wrapper/cpp/tetwrap"
+wheel.packages = ["dtcc_tetgen_wrapper"]
 sdist.include = [
     "README.md",
     "MANIFEST.in",
-    "dtcc_wrapper_tetgen",
+    "dtcc_tetgen_wrapper",
 ]
 
 [tool.scikit-build.cmake.define]
 PYBIND11_FINDPYTHON = "ON"
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Set to true for stricter checking
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+strict_equality = true
+exclude = ["demos/", "tests/", "build/", "dist/"]
+
+[[tool.mypy.overrides]]
+module = "dtcc_tetgen_wrapper.cpp.tetwrap.*"
+ignore_missing_imports = true
+
+[tool.black]
+line-length = 120
+target-version = ["py39", "py310", "py311", "py312"]
+include = '\\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip_gitignore = true
+known_first_party = ["dtcc_tetgen_wrapper"]
+
+[tool.coverage.run]
+source = ["dtcc_tetgen_wrapper"]
+omit = ["*/tests/*", "*/demos/*", "*/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == \"__main__\":",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]

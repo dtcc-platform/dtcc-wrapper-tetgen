@@ -1,3 +1,3 @@
-import dtcc_wrapper_tetgen
+import dtcc_tetgen_wrapper
 
-print(dtcc_wrapper_tetgen.__all__)
+print(dtcc_tetgen_wrapper.__all__)
