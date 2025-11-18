@@ -8,6 +8,8 @@
 #include <array>
 #include <map>
 
+#include "tetgen.h"
+
 namespace py = pybind11;
 
 // ===================== Helper conversions =====================
