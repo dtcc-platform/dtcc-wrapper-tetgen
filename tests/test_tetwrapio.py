@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from dtcc_tetgen_wrapper.tetwrapio import TetwrapIO
+from dtcc_tetgen_wrapper import TetwrapIO
 
 
 class TestTetwrapIO:
