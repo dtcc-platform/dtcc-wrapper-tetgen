@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+
 import numpy as np
 
-from dtcc_tetgen_wrapper import tetrahedralize, TetwrapIO, switches
+from dtcc_tetgen_wrapper import TetwrapIO, switches, tetrahedralize
 
 
 def make_unit_box(bottom_size: float = 1.0, height: float = 1.0):
@@ -84,8 +85,9 @@ def main():
         print(f"               {len(tetwrap_out.boundary_tri_faces)} boundary faces")
     # Optional: export to VTU if meshio is available
     try:
-        import meshio  # type: ignore
         from pathlib import Path
+
+        import meshio  # type: ignore
 
         outpath = Path(__file__).with_name("demo_box.vtu")
 

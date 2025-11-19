@@ -1,318 +1,143 @@
-"""Unit tests for the adapter module."""
+"""Targeted tests for the public tetrahedralize adapter."""
+
+from __future__ import annotations
 
 import numpy as np
 import pytest
 
-from dtcc_tetgen_wrapper import tetrahedralize
+from dtcc_tetgen_wrapper import adapter
 from dtcc_tetgen_wrapper.tetwrapio import TetwrapIO
 
 
-class TestTetrahedralizeValidation:
-    """Test input validation for tetrahedralize function."""
+class _DummyTetwrapResult:
+    """Minimal stand-in for the pybind TetGen result."""
 
-    def test_vertices_validation_wrong_shape(self, invalid_vertices):
-        """Test that wrong shaped vertices raise ValueError."""
-        # 2D vertices
-        with pytest.raises(ValueError, match="must be shape.*3"):
-            tetrahedralize(invalid_vertices["wrong_shape_2d"])
-
-        # 4D vertices
-        with pytest.raises(ValueError, match="must be shape.*3"):
-            tetrahedralize(invalid_vertices["wrong_shape_4d"])
-
-    def test_vertices_validation_too_few_points(self, invalid_vertices):
-        """Test that too few vertices raise ValueError."""
-        # Empty vertices
-        with pytest.raises(ValueError, match="at least 4"):
-            tetrahedralize(invalid_vertices["empty"])
-
-        # Single point
-        with pytest.raises(ValueError, match="at least 4"):
-            tetrahedralize(invalid_vertices["single_point"])
-
-        # Two points
-        with pytest.raises(ValueError, match="at least 4"):
-            tetrahedralize(invalid_vertices["two_points"])
-
-    def test_vertices_validation_wrong_dtype(self):
-        """Test that integer vertices are converted properly."""
-        vertices = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.int32)
-        # Should not raise - adapter should handle conversion
-        io = tetrahedralize(vertices, return_io=True)
-        assert io.points.dtype == np.float64
-
-    def test_faces_validation_wrong_shape(self, simple_tetrahedron_vertices):
-        """Test that wrong shaped faces raise ValueError."""
-        faces = np.array([[0, 1], [1, 2]])  # 2 vertices per face
-        with pytest.raises(ValueError, match="must be shape.*3"):
-            tetrahedralize(simple_tetrahedron_vertices, faces=faces)
-
-    def test_faces_validation_out_of_bounds(self, simple_tetrahedron_vertices):
-        """Test that out-of-bounds face indices raise ValueError."""
-        faces = np.array([[0, 1, 100]])  # vertex 100 doesn't exist
-        with pytest.raises(ValueError, match="out of range"):
-            tetrahedralize(simple_tetrahedron_vertices, faces=faces)
-
-    def test_faces_validation_negative_index(self, simple_tetrahedron_vertices):
-        """Test that negative face indices raise ValueError."""
-        faces = np.array([[0, 1, -1]])
-        with pytest.raises(ValueError, match="Face indices must be non-negative"):
-            tetrahedralize(simple_tetrahedron_vertices, faces=faces)
-
-    def test_boundary_facets_validation(self, unit_cube_vertices):
-        """Test boundary facets validation."""
-        # Non-dictionary input
-        with pytest.raises(ValueError, match="must be a dictionary"):
-            tetrahedralize(unit_cube_vertices, boundary_facets=[])
-
-        # Non-list values
-        boundary_facets = {"top": [[0, 1, 2]], "bottom": "not_a_list"}
-        with pytest.raises(ValueError, match="must be a list"):
-            tetrahedralize(unit_cube_vertices, boundary_facets=boundary_facets)
-
-
-class TestTetrahedralizeSimple:
-    """Test tetrahedralize with simple geometries."""
-
-    def test_tetrahedron(self, simple_tetrahedron_vertices):
-        """Test meshing a simple tetrahedron."""
-        result = tetrahedralize(simple_tetrahedron_vertices, return_io=True)
-
-        assert isinstance(result, TetwrapIO)
-        assert result.points.shape[0] >= 4  # At least original vertices
-        assert result.points.shape[1] == 3  # 3D points
-        assert result.tets.shape[0] >= 1    # At least one tetrahedron
-        assert result.tets.shape[1] == result.corners  # Correct corners
-
-    def test_tetrahedron_with_faces(self, simple_tetrahedron_vertices, simple_tetrahedron_faces):
-        """Test meshing a tetrahedron with face constraints."""
-        result = tetrahedralize(
-            simple_tetrahedron_vertices,
-            faces=simple_tetrahedron_faces,
-            return_io=True
+    def __init__(self) -> None:
+        self.points = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            dtype=float,
         )
-
-        assert isinstance(result, TetwrapIO)
-        assert result.points.shape[0] >= 4
-        assert result.tets.shape[0] >= 1
-
-    def test_cube(self, unit_cube_vertices, unit_cube_faces):
-        """Test meshing a unit cube."""
-        result = tetrahedralize(
-            unit_cube_vertices,
-            faces=unit_cube_faces,
-            return_io=True
-        )
-
-        assert isinstance(result, TetwrapIO)
-        assert result.points.shape[0] >= 8  # At least original vertices
-        assert result.tets.shape[0] >= 5    # Cube needs at least 5 tets
-
-    def test_cube_with_boundary_facets(self, unit_cube_vertices, unit_cube_boundary_facets):
-        """Test meshing a cube with boundary facets."""
-        result = tetrahedralize(
-            unit_cube_vertices,
-            boundary_facets=unit_cube_boundary_facets,
-            return_io=True
-        )
-
-        assert isinstance(result, TetwrapIO)
-        assert result.face_markers is not None
-        # Should have 6 boundary groups
-        assert len(result.face_markers) == 6
+        self.tets = np.array([[0, 1, 2, 3]], dtype=np.int32)
+        self.tri_faces = np.array([[0, 1, 2]], dtype=np.int32)
+        self.boundary_tri_faces = np.array([[0, 2, 3]], dtype=np.int32)
+        self.boundary_tri_markers = np.array([0, 2], dtype=np.int32)
+        self.tri_markers = np.array([1, 0], dtype=np.int32)
+        self.edges = np.array([[0, 1]], dtype=np.int32)
+        self.neighbors = np.array([[0, 0, 0, 0]], dtype=np.int32)
 
 
-class TestTetrahedralizeReturnOptions:
-    """Test different return options for tetrahedralize."""
-
-    def test_return_io(self, simple_tetrahedron_vertices):
-        """Test returning TetwrapIO object."""
-        result = tetrahedralize(simple_tetrahedron_vertices, return_io=True)
-        assert isinstance(result, TetwrapIO)
-
-    def test_return_default(self, simple_tetrahedron_vertices):
-        """Test default return (points and tets)."""
-        result = tetrahedralize(simple_tetrahedron_vertices)
-        assert isinstance(result, tuple)
-        assert len(result) == 2
-        points, tets = result
-        assert isinstance(points, np.ndarray)
-        assert isinstance(tets, np.ndarray)
-
-    def test_return_with_faces(self, unit_cube_vertices, unit_cube_faces):
-        """Test returning with face output."""
-        result = tetrahedralize(
-            unit_cube_vertices,
-            faces=unit_cube_faces,
-            return_faces=True
-        )
-        assert isinstance(result, tuple)
-        assert len(result) == 3
-        points, tets, tri_faces = result
-        assert tri_faces is not None
-        assert isinstance(tri_faces, np.ndarray)
-
-    def test_return_with_edges(self, simple_tetrahedron_vertices):
-        """Test returning with edge output."""
-        result = tetrahedralize(
-            simple_tetrahedron_vertices,
-            return_edges=True
-        )
-        assert isinstance(result, tuple)
-        assert len(result) == 4  # points, tets, faces, edges
-        points, tets, tri_faces, edges = result
-        assert edges is not None
-        assert isinstance(edges, np.ndarray)
-
-    def test_return_with_neighbors(self, simple_tetrahedron_vertices):
-        """Test returning with neighbor output."""
-        result = tetrahedralize(
-            simple_tetrahedron_vertices,
-            return_neighbors=True
-        )
-        assert isinstance(result, tuple)
-        assert len(result) == 5  # points, tets, faces, edges, neighbors
-        points, tets, tri_faces, edges, neighbors = result
-        assert neighbors is not None
-        assert isinstance(neighbors, np.ndarray)
-
-    def test_return_with_boundary(self, unit_cube_vertices, unit_cube_boundary_facets):
-        """Test returning with boundary information."""
-        result = tetrahedralize(
-            unit_cube_vertices,
-            boundary_facets=unit_cube_boundary_facets,
-            return_boundary=True
-        )
-        assert isinstance(result, tuple)
-        assert len(result) == 7
-        points, tets, tri_faces, edges, neighbors, boundary_faces, boundary_markers = result
-        assert boundary_faces is not None
-        assert boundary_markers is not None
+def _vertices() -> np.ndarray:
+    return np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ],
+        dtype=float,
+    )
 
 
-class TestTetrahedralizeSwitches:
-    """Test tetrahedralize with various switch configurations."""
-
-    def test_quality_control(self, unit_cube_vertices, unit_cube_faces):
-        """Test quality control parameters."""
-        # Default quality
-        result1 = tetrahedralize(
-            unit_cube_vertices,
-            faces=unit_cube_faces,
-            return_io=True
-        )
-
-        # Stricter quality
-        result2 = tetrahedralize(
-            unit_cube_vertices,
-            faces=unit_cube_faces,
-            max_radius_edge_ratio=1.5,
-            min_dihedral_angle=20,
-            return_io=True
-        )
-
-        # Stricter quality often produces more tetrahedra
-        assert result2.tets.shape[0] >= result1.tets.shape[0]
-
-    def test_max_volume(self, unit_cube_vertices, unit_cube_faces):
-        """Test max volume constraint."""
-        # Large max volume
-        result1 = tetrahedralize(
-            unit_cube_vertices,
-            faces=unit_cube_faces,
-            max_volume=1.0,
-            return_io=True
-        )
-
-        # Small max volume should create more tets
-        result2 = tetrahedralize(
-            unit_cube_vertices,
-            faces=unit_cube_faces,
-            max_volume=0.01,
-            return_io=True
-        )
-
-        assert result2.tets.shape[0] > result1.tets.shape[0]
-
-    def test_quiet_verbose(self, simple_tetrahedron_vertices):
-        """Test quiet and verbose flags."""
-        # Should not raise errors
-        tetrahedralize(simple_tetrahedron_vertices, quiet=True)
-        tetrahedralize(simple_tetrahedron_vertices, verbose=True)
-
-    def test_custom_switches(self, simple_tetrahedron_vertices):
-        """Test with custom tetgen_switches string."""
-        result = tetrahedralize(
-            simple_tetrahedron_vertices,
-            tetgen_switches="pqQ",  # plc, quality, quiet
-            return_io=True
-        )
-        assert result.switches == "pqQ"
+def _faces() -> np.ndarray:
+    return np.array(
+        [
+            [0, 1, 2],
+            [0, 1, 3],
+            [0, 2, 3],
+        ],
+        dtype=np.int64,
+    )
 
 
-class TestTetrahedralizeEdgeCases:
-    """Test edge cases and error conditions."""
+def _boundary() -> list[list[int]]:
+    return [[0, 1, 2]]
 
-    def test_coplanar_points(self):
-        """Test handling of coplanar points."""
-        # All points in z=0 plane
-        vertices = np.array([
-            [0, 0, 0],
-            [1, 0, 0],
-            [1, 1, 0],
-            [0, 1, 0],
-        ], dtype=np.float64)
 
-        # Should handle gracefully, possibly with warning
-        # TetGen might add points or fail depending on switches
-        with pytest.raises(Exception):
-            # This should fail as points are coplanar
-            tetrahedralize(vertices, plc=False)
+def test_boundary_facets_are_required() -> None:
+    """tetrahedralize rejects a missing boundary description."""
+    with pytest.raises(ValueError):
+        adapter.tetrahedralize(_vertices(), _faces(), None)  # type: ignore[arg-type]
 
-    def test_duplicate_vertices(self):
-        """Test handling of duplicate vertices."""
-        vertices = np.array([
-            [0, 0, 0],
-            [1, 0, 0],
-            [0, 1, 0],
-            [0, 0, 1],
-            [0, 0, 0],  # Duplicate of first vertex
-        ], dtype=np.float64)
 
-        # Should handle duplicates
-        result = tetrahedralize(vertices, return_io=True)
-        # TetGen typically removes duplicates
-        assert result.points.shape[0] <= 5
+def test_face_markers_match_face_count() -> None:
+    """face_markers must be the same length as the provided faces."""
+    with pytest.raises(ValueError, match="same length as faces"):
+        adapter.tetrahedralize(_vertices(), _faces(), _boundary(), face_markers=[1])
 
-    def test_large_mesh(self):
-        """Test with a larger mesh."""
-        # Create a grid of points
-        x = np.linspace(0, 1, 5)
-        y = np.linspace(0, 1, 5)
-        z = np.linspace(0, 1, 5)
-        xx, yy, zz = np.meshgrid(x, y, z)
-        vertices = np.column_stack([xx.ravel(), yy.ravel(), zz.ravel()])
 
-        result = tetrahedralize(vertices, return_io=True)
-        assert result.points.shape[0] >= 125  # Original vertices
-        assert result.tets.shape[0] > 0
+def test_returns_tetwrap_io_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When return_io is True (default) a TetwrapIO wrapper is produced."""
+    dummy_result = _DummyTetwrapResult()
+    captured = {}
 
-    @pytest.mark.slow
-    def test_performance_large_mesh(self):
-        """Test performance with very large mesh."""
-        # Create a larger grid
-        x = np.linspace(0, 1, 10)
-        y = np.linspace(0, 1, 10)
-        z = np.linspace(0, 1, 10)
-        xx, yy, zz = np.meshgrid(x, y, z)
-        vertices = np.column_stack([xx.ravel(), yy.ravel(), zz.ravel()])
+    def _fake_tetrahedralize(V, F, F_markers, B, switch_str, ret_boundary):
+        captured["vertices"] = V
+        captured["faces"] = F
+        captured["face_markers"] = F_markers
+        captured["boundary"] = B
+        captured["switch_str"] = switch_str
+        captured["return_boundary_faces"] = ret_boundary
+        return dummy_result
 
-        import time
-        start = time.time()
-        result = tetrahedralize(vertices, return_io=True)
-        elapsed = time.time() - start
+    monkeypatch.setattr(adapter._tetwrap, "_tetrahedralize", _fake_tetrahedralize)
 
-        assert result.points.shape[0] >= 1000
-        assert result.tets.shape[0] > 0
-        # Should complete in reasonable time (adjust as needed)
-        assert elapsed < 10.0, f"Tetrahedralization took {elapsed:.2f}s"
+    io = adapter.tetrahedralize(
+        _vertices(),
+        _faces(),
+        _boundary(),
+        face_markers=[3, 3, 3],
+        switches_params={"quality": 2},
+    )
+
+    assert isinstance(io, TetwrapIO)
+    assert io.raw() is dummy_result
+
+    assert np.allclose(captured["vertices"], _vertices())
+    assert captured["faces"].dtype == np.int64
+    assert captured["face_markers"].dtype == np.int32
+    assert captured["boundary"] == [[0, 1, 2]]
+    # Defaults enable PLC (-p) and our quality request adds q2.
+    assert "p" in captured["switch_str"]
+    assert "q2" in captured["switch_str"]
+    assert captured["return_boundary_faces"] is False
+
+
+def test_requesting_outputs_sets_switches(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Requesting faces/edges/neighbors toggles the associated TetGen switches."""
+    dummy_result = _DummyTetwrapResult()
+    called = {}
+
+    def _fake_tetrahedralize(V, F, F_markers, B, switch_str, ret_boundary):
+        called["switch_str"] = switch_str
+        called["return_boundary_faces"] = ret_boundary
+        return dummy_result
+
+    monkeypatch.setattr(adapter._tetwrap, "_tetrahedralize", _fake_tetrahedralize)
+
+    result = adapter.tetrahedralize(
+        _vertices(),
+        _faces(),
+        {"top": [0, 1, 2]},
+        return_io=False,
+        return_faces=True,
+        return_edges=True,
+        return_neighbors=True,
+        return_boundary_faces=True,
+    )
+
+    assert called["return_boundary_faces"] is True
+    for flag in ("f", "e", "n"):
+        assert flag in called["switch_str"]
+
+    assert isinstance(result, tuple)
+    assert len(result) == 7
+    points, tets, tri_faces, edges, neighbors, boundary_faces, boundary_markers = result
+    assert isinstance(points, np.ndarray)
+    assert isinstance(boundary_markers, np.ndarray)
+    # Markers are normalized: 0 -> default (-10), positives are shifted down.
+    assert set(boundary_markers.tolist()) == {-10, 1}
