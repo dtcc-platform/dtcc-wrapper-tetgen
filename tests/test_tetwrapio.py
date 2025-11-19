@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+
 from dtcc_tetgen_wrapper import TetwrapIO
 
 

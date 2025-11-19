@@ -1,6 +1,7 @@
 """Unit tests for the switches module."""
 
 import pytest
+
 from dtcc_tetgen_wrapper import switches
 
 

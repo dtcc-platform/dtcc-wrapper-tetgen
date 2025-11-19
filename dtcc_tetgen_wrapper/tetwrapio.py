@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 import numpy as np
 
-import _tetwrap
+from . import _tetwrap
 
 
 @dataclass(slots=True)
