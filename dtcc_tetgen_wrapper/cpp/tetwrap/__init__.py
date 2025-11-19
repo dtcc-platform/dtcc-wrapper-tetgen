@@ -1,9 +1,9 @@
+from . import switches
+from ._tetwrap import _tetrahedralize  # returns TetwrapIO
+from ._tetwrap import build_volume_mesh  # returns (points, tets)
 from ._tetwrap import (
-    build_volume_mesh,      # returns (points, tets)
-    _tetrahedralize,         # returns TetwrapIO
     TetwrapIO,
 )
-from . import switches
 
 # Convenience alias
 tetrahedralize = _tetrahedralize
