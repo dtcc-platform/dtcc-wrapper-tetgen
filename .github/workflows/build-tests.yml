@@ -14,15 +14,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Download TetGen sources
+      # Non-Windows: use the bash script
+      - name: Download TetGen sources (non-Windows)
+        if: runner.os != 'Windows'
         run: bash vendor_tetgen.sh
 
+      # Windows: use your PowerShell script
+      - name: Download TetGen sources (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+          ./vendor_tetgen.ps1
+
+      # Archive TetGen directory (same command works on all OSes)
       - name: Archive TetGen directory
         run: |
           tar -czf tetgen-${{ runner.os }}.tar.gz -C dtcc_tetgen_wrapper/cpp tetgen
@@ -31,6 +43,7 @@ jobs:
         with:
           name: vendor-tetgen-${{ runner.os }}
           path: tetgen-${{ runner.os }}.tar.gz
+
 
   build-wheels:
     name: Build wheels on ${{ matrix.os }}

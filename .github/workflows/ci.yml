@@ -36,9 +36,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install scikit-build-core[pyproject] pybind11 numpy packaging
 
-    - name: Download and vendor TetGen
-      run: |
-        bash vendor_tetgen.sh
+    # Non-Windows: use the bash script
+    - name: Download TetGen sources (non-Windows)
+      if: runner.os != 'Windows'
+      run: bash vendor_tetgen.sh
+
+    # Windows: use your PowerShell script
+    - name: Download TetGen sources (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: ./vendor_tetgen.ps1
 
     - name: Build and install package
       run: |
