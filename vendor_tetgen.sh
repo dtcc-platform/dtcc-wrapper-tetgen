@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TETGEN_VERSION="${TETGEN_VERSION:-v1.5.1}"
+TETGEN_VERSION="${TETGEN_VERSION:-v1.6.0}"
 TETGEN_URL="https://codeberg.org/TetGen/TetGen/archive/${TETGEN_VERSION}.tar.gz"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

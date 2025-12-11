@@ -7,8 +7,14 @@
 #include <algorithm>
 #include <array>
 #include <map>
+#include <cstddef>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <limits>
 
-#include "tetgen.h"
+#include "tetgen.cxx"
 
 namespace py = pybind11;
 
@@ -53,6 +59,64 @@ static py::array_t<double> to_vector_f64(const REAL* src, int n)
     for (int i = 0; i < n; ++i)
         a(i) = src[i];
     return A;
+}
+
+// Write vertices and faces to CSV-ish files for debugging.
+static std::string dump_plc(const py::array_t<double, py::array::c_style | py::array::forcecast>& vertices,
+                            const py::array_t<int,    py::array::c_style | py::array::forcecast>& mesh_facets,
+                            const std::vector<std::vector<int>>& boundary_facets,
+                            const std::string& prefix)
+{
+    std::vector<std::string> written;
+
+    try {
+        auto V = vertices.unchecked<2>();
+        auto F = mesh_facets.unchecked<2>();
+
+        const std::string v_path = prefix + "_vertices.csv";
+        std::ofstream vout(v_path);
+        if (vout) {
+            vout << "x,y,z\n";
+            vout << std::setprecision(17);
+            for (ssize_t i = 0; i < V.shape(0); ++i) {
+                vout << V(i, 0) << ',' << V(i, 1) << ',' << V(i, 2) << '\n';
+            }
+            written.push_back(v_path);
+        }
+
+        const std::string f_path = prefix + "_faces.csv";
+        std::ofstream fout(f_path);
+        if (fout) {
+            fout << "v0,v1,v2\n";
+            for (ssize_t i = 0; i < F.shape(0); ++i) {
+                fout << F(i, 0) << ',' << F(i, 1) << ',' << F(i, 2) << '\n';
+            }
+            written.push_back(f_path);
+        }
+
+        const std::string b_path = prefix + "_boundary_facets.txt";
+        std::ofstream bout(b_path);
+        if (bout) {
+            for (size_t bi = 0; bi < boundary_facets.size(); ++bi) {
+                bout << "# facet " << bi << '\n';
+                const auto& poly = boundary_facets[bi];
+                for (size_t j = 0; j < poly.size(); ++j) {
+                    bout << poly[j] << (j + 1 == poly.size() ? '\n' : ' ');
+                }
+            }
+            written.push_back(b_path);
+        }
+    } catch (...) {
+        // Swallow dump errors; we'll simply return what we managed to write.
+    }
+
+    if (written.empty()) return std::string();
+    std::ostringstream os;
+    for (size_t i = 0; i < written.size(); ++i) {
+        if (i) os << ';';
+        os << written[i];
+    }
+    return os.str();
 }
 
 // ===================== Rich IO result =====================
@@ -312,8 +376,52 @@ static TetwrapIO tetrahedralize_core(
 
 
     // Tetrahedralize with exception handling
+    // try {
+    //     tetrahedralize(sw.data(), &in, &out);
+    // } catch (const std::exception& e) {
+    //     throw std::runtime_error(std::string("TetGen failed: ") + e.what());
+    // } catch (...) {
+    //     throw std::runtime_error("TetGen failed with an unknown error. This may be due to invalid input geometry or incompatible switches.");
+    // }
     try {
         tetrahedralize(sw.data(), &in, &out);
+    } catch (int code) {
+        std::string msg;
+        switch (code) {
+        case 1:  msg = "out of memory"; break;
+        case 2:  msg = "internal error (report bug)"; break;
+        case 3:  msg = "input surface has self-intersections"; break;
+        case 4:  msg = "very small input feature size (use -T to relax)"; break;
+        case 5:  msg = "two very close input facets (try -Y)"; break;
+        case 10: msg = "input error"; break;
+        case 200: msg = "boundary contains Steiner points (-YY)"; break;
+        default: msg = "unknown TetGen code"; break;
+        }
+
+        // Reconstruct switch string (strip trailing NUL if present)
+        std::string sw_str;
+        if (!sw.empty()) {
+            const bool has_nul = sw.back() == '\0';
+            sw_str.assign(sw.begin(), sw.begin() + static_cast<std::ptrdiff_t>(sw.size() - (has_nul ? 1 : 0)));
+        }
+
+        // Basic input summary
+        std::ostringstream summary;
+        summary << "TetGen failed (code " << code << "): " << msg
+                << " | switches=\"" << sw_str << "\""
+                << " | points=" << N
+                << ", mesh_facets=" << M
+                << ", boundary_polys=" << B;
+
+        // Dump PLC for repro
+        const std::string dump_paths = dump_plc(vertices, mesh_facets, boundary_facets, "tetgen_fail");
+        if (!dump_paths.empty()) {
+            summary << " | dump_files=" << dump_paths;
+        }
+
+        // Print to stderr for visibility, then raise to Python
+        std::cerr << summary.str() << std::endl;
+        throw std::runtime_error(summary.str());
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string("TetGen failed: ") + e.what());
     } catch (...) {
