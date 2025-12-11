@@ -3,7 +3,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$tetgenVersion = if ($env:TETGEN_VERSION) { $env:TETGEN_VERSION } else { "v1.5.1" }
+$tetgenVersion = if ($env:TETGEN_VERSION) { $env:TETGEN_VERSION } else { "v1.6.0" }
 $tetgenUrl = "https://codeberg.org/TetGen/TetGen/archive/$tetgenVersion.tar.gz"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
